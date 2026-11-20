@@ -14,23 +14,28 @@ echo.
 echo ===== PYTHON PRACTICE =====
 echo.
 
-:: Automatically trust this repository if not already trusted
-git config --global --get-all safe.directory | findstr /I /X /C:"%CD%" >nul
-if errorlevel 1 (
-    git config --global --add safe.directory "%CD%"
-    if errorlevel 1 goto error
-)
-
 :: Check Git repository
 git rev-parse --is-inside-work-tree >nul 2>&1
 if errorlevel 1 (
-    echo ERROR: This folder is not a Git repository!
-    echo Make sure Git is initialized in this folder.
+    echo ERROR: This is not a Git repository!
     pause
     exit /b 1
 )
 
-:: Stage all changes
+:: Ensure correct GitHub remote
+git remote get-url origin >nul 2>&1
+if errorlevel 1 (
+    git remote add origin https://github.com/karandeabhinavcse-code/Python.git
+) else (
+    git remote set-url origin https://github.com/karandeabhinavcse-code/Python.git
+)
+if errorlevel 1 goto error
+
+:: Ensure main branch
+git branch -M main
+if errorlevel 1 goto error
+
+:: Stage changes
 git add .
 if errorlevel 1 goto error
 
@@ -38,23 +43,27 @@ if errorlevel 1 goto error
 git diff --cached --quiet
 set "DIFF_RESULT=%ERRORLEVEL%"
 
-if "%DIFF_RESULT%"=="0" (
-    echo No changes to push.
-    pause
-    exit /b 0
-)
+if "%DIFF_RESULT%"=="1" goto commit_changes
+if not "%DIFF_RESULT%"=="0" goto error
 
-if not "%DIFF_RESULT%"=="1" goto error
+goto sync_github
 
-:: Commit and push
+:commit_changes
 git commit -m "Daily Python practice"
 if errorlevel 1 goto error
 
-git push
+:sync_github
+:: Synchronize with GitHub
+git pull --rebase origin main
+if errorlevel 1 goto error
+
+:: Push to GitHub
+git push -u origin main
 if errorlevel 1 goto error
 
 echo.
 echo ===== PYTHON PUSH COMPLETE =====
+echo.
 pause
 exit /b 0
 
